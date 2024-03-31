@@ -6,13 +6,12 @@ use std::ptr;
 use libc;
 
 use super::common::Context;
-use super::destructor;
+use super::destructor::{self, CustomDestructor};
 use codec::traits;
 use ffi::*;
 use {format, ChapterMut, Dictionary, Error, Rational, StreamMut};
 
 pub struct Output {
-    ptr: *mut AVFormatContext,
     ctx: Context,
 }
 
@@ -21,17 +20,22 @@ unsafe impl Send for Output {}
 impl Output {
     pub unsafe fn wrap(ptr: *mut AVFormatContext) -> Self {
         Output {
-            ptr,
             ctx: Context::wrap(ptr, destructor::Mode::Output),
         }
     }
 
+    pub unsafe fn wrap_with_dtor(ptr: *mut AVFormatContext, dtor: CustomDestructor) -> Self {
+        Output {
+            ctx: Context::wrap(ptr, destructor::Mode::Custom(dtor)),
+        }
+    }
+
     pub unsafe fn as_ptr(&self) -> *const AVFormatContext {
-        self.ptr as *const _
+        self.ctx.as_ptr()
     }
 
     pub unsafe fn as_mut_ptr(&mut self) -> *mut AVFormatContext {
-        self.ptr
+        self.ctx.as_mut_ptr()
     }
 }
 

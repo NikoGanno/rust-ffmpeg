@@ -9,7 +9,6 @@ use libc::{c_int, c_uint};
 use {media, Chapter, ChapterMut, DictionaryRef, Stream, StreamMut};
 
 pub struct Context {
-    ptr: *mut AVFormatContext,
     dtor: Rc<Destructor>,
 }
 
@@ -18,17 +17,16 @@ unsafe impl Send for Context {}
 impl Context {
     pub unsafe fn wrap(ptr: *mut AVFormatContext, mode: destructor::Mode) -> Self {
         Context {
-            ptr,
             dtor: Rc::new(Destructor::new(ptr, mode)),
         }
     }
 
     pub unsafe fn as_ptr(&self) -> *const AVFormatContext {
-        self.ptr as *const _
+        self.dtor.raw_ptr() as *const _
     }
 
     pub unsafe fn as_mut_ptr(&mut self) -> *mut AVFormatContext {
-        self.ptr
+        self.dtor.raw_ptr()
     }
 
     pub unsafe fn destructor(&self) -> Rc<Destructor> {
@@ -168,7 +166,7 @@ impl<'a> Best<'a> {
         unsafe {
             let decoder = ptr::null_mut();
             let index = av_find_best_stream(
-                self.context.ptr,
+                self.context.dtor.raw_ptr(),
                 kind.into(),
                 self.wanted as c_int,
                 self.related as c_int,

@@ -1,9 +1,12 @@
 use ffi::*;
 
+pub type CustomDestructor = extern "C" fn(*mut AVFormatContext);
+
 #[derive(Copy, Clone, Debug)]
 pub enum Mode {
     Input,
     Output,
+    Custom(CustomDestructor),
 }
 
 pub struct Destructor {
@@ -14,6 +17,10 @@ pub struct Destructor {
 impl Destructor {
     pub unsafe fn new(ptr: *mut AVFormatContext, mode: Mode) -> Self {
         Destructor { ptr, mode }
+    }
+
+    pub unsafe fn raw_ptr(&self) -> *mut AVFormatContext {
+        self.ptr
     }
 }
 
@@ -26,6 +33,10 @@ impl Drop for Destructor {
                 Mode::Output => {
                     avio_close((*self.ptr).pb);
                     avformat_free_context(self.ptr);
+                }
+
+                Mode::Custom(dtor) => {
+                    dtor(self.ptr);
                 }
             }
         }
